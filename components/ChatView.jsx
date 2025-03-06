@@ -7,13 +7,14 @@ import UserAvatar from './UserAvatar';
 import { supabase } from '../utils/supabase';
 import { useSupabase } from '../contexts/SupabaseContext';
 import useMessages from '../hooks/useMessages';
+import { Chat } from '../types';
 
-const ChatView = ({ chat }) => {
+const ChatView = ({ chat }: { chat: { id: string | null } }) => {
   const { user } = useSupabase();
-  const [chatDetails, setChatDetails] = useState(null);
+  const [chatDetails, setChatDetails] = useState<Chat | null>(null);
   const [loadingChat, setLoadingChat] = useState(false);
-  const messagesEndRef = useRef(null);
-  const { messages, loading: loadingMessages, error: messagesError, sendMessage } = useMessages(chat?.id);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { messages, loading: loadingMessages, error: messagesError, sendMessage } = useMessages(chat.id);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -25,7 +26,7 @@ const ChatView = ({ chat }) => {
   // Fetch chat details when chat ID changes
   useEffect(() => {
     const fetchChatDetails = async () => {
-      if (!chat?.id) {
+      if (!chat.id) {
         setChatDetails(null);
         return;
       }
@@ -49,7 +50,8 @@ const ChatView = ({ chat }) => {
               )
             )
           `)
-          .eq('id', chat.id);
+          .eq('id', chat.id)
+          .single(); // Use single() to get a single object instead of an array
           
         if (error) {
           console.error("Error fetching chat details:", error);
@@ -57,25 +59,22 @@ const ChatView = ({ chat }) => {
           setChatDetails({
             id: chat.id,
             name: "Chat",
-            is_group: true
+            is_group: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           });
-        } else if (data && data.length > 0) {
-          console.log("Chat details loaded:", data[0]);
-          setChatDetails(data[0]);
         } else {
-          console.warn("No chat found with ID:", chat.id);
-          setChatDetails({
-            id: chat.id,
-            name: "Chat",
-            is_group: true
-          });
+          console.log("Chat details loaded:", data);
+          setChatDetails(data);
         }
       } catch (error) {
         console.error("Error in fetchChatDetails:", error);
         setChatDetails({
           id: chat.id,
           name: "Chat",
-          is_group: true
+          is_group: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         });
       } finally {
         setLoadingChat(false);
@@ -83,10 +82,10 @@ const ChatView = ({ chat }) => {
     };
     
     fetchChatDetails();
-  }, [chat?.id]);
+  }, [chat.id]);
 
   // Handle sending a message
-  const handleSendMessage = async (text) => {
+  const handleSendMessage = async (text: string) => {
     if (!text.trim()) return;
     
     const { error } = await sendMessage(text.trim());
@@ -97,14 +96,14 @@ const ChatView = ({ chat }) => {
     }
   };
 
-  const formatTimestamp = (timestamp) => {
+  const formatTimestamp = (timestamp: string) => {
     if (!timestamp) return '';
     
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
   
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     if (!dateString) return '';
     
     const date = new Date(dateString);
@@ -129,7 +128,7 @@ const ChatView = ({ chat }) => {
 
   // Group messages by date
   const groupMessagesByDate = () => {
-    const groups = {};
+    const groups: { [key: string]: any[] } = {};
     
     messages.forEach(message => {
       const date = new Date(message.created_at);
@@ -150,7 +149,7 @@ const ChatView = ({ chat }) => {
   };
 
   // Get sender display name - returns "Me" for current user
-  const getSenderDisplayName = (message) => {
+  const getSenderDisplayName = (message: any) => {
     if (!user) return 'Unknown';
     
     if (message.user_id === user.id) {
@@ -160,7 +159,8 @@ const ChatView = ({ chat }) => {
     return message.user?.full_name || message.user?.email || message.user_id || 'Unknown';
   };
 
-  if (!chat?.id) {
+  // If no chat is selected
+  if (!chat.id) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gray-100">
         <div className="text-center text-black">
@@ -170,6 +170,7 @@ const ChatView = ({ chat }) => {
     );
   }
 
+  // Loading state
   if (loadingChat || loadingMessages) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gray-100">
@@ -189,7 +190,9 @@ const ChatView = ({ chat }) => {
         chat={chatDetails || { 
           id: chat.id, 
           name: "Chat", 
-          is_group: true 
+          is_group: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }} 
       />
       

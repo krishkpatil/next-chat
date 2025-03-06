@@ -1,17 +1,24 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import ChatList from './ChatList';
 import UserAvatar from './UserAvatar';
 import { supabase } from '../utils/supabase';
 import { useSupabase } from '../contexts/SupabaseContext';
+import { Chat } from '../types'; // Ensure you have a type definition for Chat
 
-const Sidebar = ({ activeChat, onSelectChat }) => {
+const Sidebar = ({ 
+  activeChat, 
+  onSelectChat 
+}: { 
+  activeChat: string | null, 
+  onSelectChat: (chatId: string) => void 
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [chats, setChats] = useState([]);
+  const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { user, signOut } = useSupabase();
   
-  // Use React's useEffect to fetch chats when component mounts or user changes
+  // Fetch chats when component mounts or user changes
   useEffect(() => {
     const fetchChats = async () => {
       if (!user) {
@@ -41,7 +48,7 @@ const Sidebar = ({ activeChat, onSelectChat }) => {
           return;
         }
         
-        // Extract just the chat IDs
+        // Extract chat IDs
         const chatIds = participantsData.map(p => p.chat_id);
         
         console.log("User chat IDs:", chatIds);
@@ -58,13 +65,20 @@ const Sidebar = ({ activeChat, onSelectChat }) => {
         console.log("User chat data:", chatData);
         
         // Transform to match UI format
-        setChats(chatData.map(chat => ({
+        const formattedChats = chatData.map(chat => ({
           id: chat.id,
           name: chat.name,
           lastMessage: chat.last_message || '',
           timestamp: formatDate(chat.last_message_at || chat.created_at),
           is_group: chat.is_group
-        })));
+        }));
+
+        setChats(formattedChats);
+
+        // If no chat is active and chats exist, select the first chat
+        if (!activeChat && formattedChats.length > 0) {
+          onSelectChat(formattedChats[0].id);
+        }
       } catch (error) {
         console.error('Error fetching chats:', error);
         setLoadError('Failed to load chats');
@@ -88,35 +102,22 @@ const Sidebar = ({ activeChat, onSelectChat }) => {
             .eq('user_id', user?.id)
             .then(({ data }) => {
               if (data && data.length > 0) {
-                setChats(prev => [
-                  {
-                    id: payload.new.id,
-                    name: payload.new.name,
-                    lastMessage: payload.new.last_message || '',
-                    timestamp: formatDate(payload.new.last_message_at || payload.new.created_at),
-                    is_group: payload.new.is_group
-                  },
-                  ...prev
-                ]);
+                const newChat = {
+                  id: payload.new.id,
+                  name: payload.new.name,
+                  lastMessage: payload.new.last_message || '',
+                  timestamp: formatDate(payload.new.last_message_at || payload.new.created_at),
+                  is_group: payload.new.is_group
+                };
+
+                setChats(prev => [newChat, ...prev]);
+
+                // Automatically select the new chat if no chat is currently active
+                if (!activeChat) {
+                  onSelectChat(newChat.id);
+                }
               }
             });
-        }
-      )
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chats' },
-        (payload) => {
-          // Update chat when there's a change
-          setChats(prevChats => 
-            prevChats.map(chat => 
-              chat.id === payload.new.id 
-                ? {
-                    ...chat,
-                    name: payload.new.name,
-                    lastMessage: payload.new.last_message || '',
-                    timestamp: formatDate(payload.new.last_message_at || payload.new.created_at)
-                  } 
-                : chat
-            )
-          );
         }
       )
       .subscribe();
@@ -125,9 +126,9 @@ const Sidebar = ({ activeChat, onSelectChat }) => {
       chatSubscription.unsubscribe();
     };
   }, [user]);
-  
+
   // Format date helper
-  const formatDate = (dateStr) => {
+  const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
     const now = new Date();
@@ -286,18 +287,6 @@ const Sidebar = ({ activeChat, onSelectChat }) => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          {/* Removed the + icon that was here */}
-        </div>
-      </div>
-      
-      <div className="p-2 border-b border-gray-200">
-        <div className="flex space-x-1">
-          <button className="px-3 py-1 text-sm bg-gray-200 text-black rounded-lg hover:bg-gray-300">
-            Custom filter
-          </button>
-          <button className="px-3 py-1 text-sm bg-gray-100 text-black rounded-lg hover:bg-gray-200">
-            Save
-          </button>
         </div>
       </div>
       

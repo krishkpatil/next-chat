@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '../contexts/SupabaseContext';
 import Sidebar from '../components/Sidebar';
@@ -11,6 +11,7 @@ import RightSidebar from '../components/RightSidebar';
 export default function Home() {
   const { user, isLoading } = useSupabase();
   const router = useRouter();
+  const [activeChat, setActiveChat] = useState<string | null>(null);
 
   // Redirect to signin if not authenticated
   useEffect(() => {
@@ -19,6 +20,15 @@ export default function Home() {
       router.replace('/auth/signin');
     }
   }, [user, isLoading, router]);
+
+  // Handle chat selection
+  const handleSelectChat = (chatId: string) => {
+    console.log('Selected chat:', chatId);
+    setActiveChat(chatId);
+    
+    // Optionally save to localStorage
+    localStorage.setItem('activeChat', chatId);
+  };
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -39,11 +49,11 @@ export default function Home() {
     <main className="flex h-screen bg-white overflow-hidden">
       <NavigationSidebar />
       <Sidebar 
-        activeChat={null} 
-        onSelectChat={() => {}} 
+        activeChat={activeChat} 
+        onSelectChat={handleSelectChat} 
       />
       <ChatView 
-        chat={{ id: null }} 
+        chat={{ id: activeChat }} 
       />
       <RightSidebar />
     </main>
