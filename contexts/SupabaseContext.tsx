@@ -1,17 +1,16 @@
 'use client';
 
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { Session, User } from '@supabase/supabase-js';
+import { Session, User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabase';
 
 interface SupabaseContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<any>;
-  signUp: (email: string, password: string, fullName: string, phone: string) => Promise<any>;
-  signOut: () => Promise<any>;
-  debugUser: () => User | null;
+  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string, fullName: string, phone: string) => Promise<{ error: AuthError | null }>;
+  signOut: () => Promise<{ error: AuthError | null }>;
 }
 
 const SupabaseContext = createContext<SupabaseContextType | undefined>(undefined);
@@ -22,43 +21,50 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const setData = async () => {
+    // Initial session check
+    const checkSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
+        
         if (error) {
-          console.error('Error getting session:', error);
-          setSession(null);
+          console.error('Error getting initial session:', error);
           setUser(null);
+          setSession(null);
         } else {
-          console.log('Session loaded:', session ? 'Found' : 'None');
-          if (session?.user) {
-            console.log('User email:', session.user.email);
-          }
+          console.log('Initial session:', session ? 'Found' : 'None');
           setSession(session);
           setUser(session?.user ?? null);
         }
       } catch (e) {
-        console.error('Unexpected error in session setup:', e);
-        setSession(null);
+        console.error('Unexpected error in initial session setup:', e);
         setUser(null);
+        setSession(null);
       } finally {
         setIsLoading(false);
       }
     };
 
-    // Set the initial data
-    setData();
+    // Initial session check
+    checkSession();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
-        setSession(session);
-        setUser(session?.user ?? null);
-        setIsLoading(false);
+        
+        setIsLoading(true);
+        try {
+          setSession(session);
+          setUser(session?.user ?? null);
+        } catch (error) {
+          console.error('Error in auth state change:', error);
+        } finally {
+          setIsLoading(false);
+        }
       }
     );
 
+    // Cleanup subscription
     return () => {
       subscription.unsubscribe();
     };
@@ -67,15 +73,18 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const signIn = async (email: string, password: string) => {
     console.log('Signing in with:', email);
     try {
-      const result = await supabase.auth.signInWithPassword({ email, password });
-      console.log('Sign in result:', result.error ? 'Error' : 'Success');
-      if (result.data.user) {
-        console.log('Successfully signed in as:', result.data.user.email);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (error) {
+        console.error('Sign in error:', error.message);
+        return { error };
       }
-      return result;
+      
+      console.log('Sign in successful');
+      return { error: null };
     } catch (e) {
       console.error('Exception during sign in:', e);
-      throw e;
+      return { error: { name: 'SignInError', message: String(e) } as AuthError };
     }
   };
 
@@ -87,12 +96,18 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         password,
         options: {
           data: {
-            full_name: fullName
+            full_name: fullName,
+            phone
           }
         }
       });
 
-      if (!error && data.user) {
+      if (error) {
+        console.error('Sign up error:', error.message);
+        return { error };
+      }
+
+      if (data.user) {
         console.log('User created, adding to users table:', data.user.id);
         // Create a record in the users table
         const { error: userError } = await supabase.from('users').insert({
@@ -107,18 +122,17 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       }
 
-      return { data, error };
+      return { error: null };
     } catch (e) {
       console.error('Exception during sign up:', e);
-      throw e;
+      return { error: { name: 'SignUpError', message: String(e) } as AuthError };
     }
   };
 
   const signOut = async () => {
     console.log('Signing out user:', user?.email);
     try {
-      // Then trigger the sign out from Supabase
-      const result = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
       
       // Clear local storage related to the current chat
       if (typeof window !== 'undefined' && window.localStorage) {
@@ -126,24 +140,11 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
       
       console.log('Sign out completed');
-      return result;
+      return { error };
     } catch (e) {
       console.error('Exception during sign out:', e);
-      throw e;
+      return { error: { name: 'SignOutError', message: String(e) } as AuthError };
     }
-  };
-
-  const debugUser = () => {
-    if (user) {
-      console.log("Current user:", {
-        id: user.id,
-        email: user.email,
-        role: user.role
-      });
-    } else {
-      console.log("No user authenticated");
-    }
-    return user;
   };
 
   const value = {
@@ -152,8 +153,7 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     isLoading,
     signIn,
     signUp,
-    signOut,
-    debugUser
+    signOut
   };
 
   return (

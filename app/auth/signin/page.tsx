@@ -20,11 +20,15 @@ export default function SignIn() {
   // Redirect if already authenticated
   useEffect(() => {
     if (user) {
-      console.log("User already authenticated, redirecting:", user.email);
-      setDebugInfo(`Already authenticated as: ${user.email}`);
-      router.push('/');
-    } else {
-      console.log("No user authenticated, showing sign-in form");
+      console.log("User already authenticated in SignIn page, redirecting:", user.email);
+      
+      // Use setTimeout to ensure any pending state updates are processed
+      const redirectTimer = setTimeout(() => {
+        router.replace('/', { scroll: false });
+      }, 100);
+
+      // Cleanup function to clear the timer
+      return () => clearTimeout(redirectTimer);
     }
   }, [user, router]);
 
@@ -52,6 +56,7 @@ export default function SignIn() {
         
         // On successful signup, show a message that they need to verify email
         alert('Please check your email to verify your account!');
+        setIsSignUp(false);
       } else {
         console.log(`Attempting to sign in with email: ${email}`);
         setDebugInfo(`Signing in as: ${email}`);
@@ -61,10 +66,9 @@ export default function SignIn() {
           throw error;
         }
         
-        // On successful login, redirect to home
-        console.log("Sign in successful, redirecting...");
+        // On successful login, log and prepare for redirect
+        console.log("Sign in successful, preparing to redirect...");
         setDebugInfo(`Successfully signed in as: ${email}`);
-        router.push('/');
       }
     } catch (err: any) {
       console.error("Authentication error:", err);
@@ -74,6 +78,18 @@ export default function SignIn() {
       setLoading(false);
     }
   };
+
+  // If user is already authenticated, show nothing or a loading state
+  if (user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <p>Redirecting...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mt-4"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
@@ -100,18 +116,6 @@ export default function SignIn() {
           {debugInfo && (
             <div className="bg-blue-100 text-blue-700 p-3 rounded mb-4 text-xs">
               Debug: {debugInfo}
-            </div>
-          )}
-
-          {user && (
-            <div className="bg-yellow-100 text-yellow-800 p-3 rounded mb-4">
-              You are currently signed in as {user.email}. 
-              <button 
-                onClick={() => router.push('/')}
-                className="ml-2 underline"
-              >
-                Go to app
-              </button>
             </div>
           )}
 
@@ -192,6 +196,7 @@ export default function SignIn() {
           
           <div className="mt-4 text-center">
             <button
+              type="button"
               onClick={() => setIsSignUp(!isSignUp)}
               className="text-green-500 hover:text-green-600"
             >
