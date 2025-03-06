@@ -83,7 +83,7 @@ const ChatInput = ({ onSendMessage }) => {
         <div className="flex-1 rounded-full border border-gray-300 bg-white flex items-center">
           <textarea
             placeholder="Message..."
-            className="w-full px-4 py-2 bg-transparent outline-none text-sm resize-none max-h-32"
+            className="w-full px-4 py-2 bg-transparent outline-none text-sm resize-none max-h-32 text-black"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={handleKeyPress}

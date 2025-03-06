@@ -23,14 +23,27 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     const setData = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) {
-        console.error('Error getting session:', error);
-      } else {
-        setSession(session);
-        setUser(session?.user ?? null);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error getting session:', error);
+          setSession(null);
+          setUser(null);
+        } else {
+          console.log('Session loaded:', session ? 'Found' : 'None');
+          if (session?.user) {
+            console.log('User email:', session.user.email);
+          }
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
+      } catch (e) {
+        console.error('Unexpected error in session setup:', e);
+        setSession(null);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     // Set the initial data
@@ -39,6 +52,7 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
@@ -51,35 +65,72 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    return supabase.auth.signInWithPassword({ email, password });
+    console.log('Signing in with:', email);
+    try {
+      const result = await supabase.auth.signInWithPassword({ email, password });
+      console.log('Sign in result:', result.error ? 'Error' : 'Success');
+      if (result.data.user) {
+        console.log('Successfully signed in as:', result.data.user.email);
+      }
+      return result;
+    } catch (e) {
+      console.error('Exception during sign in:', e);
+      throw e;
+    }
   };
 
   const signUp = async (email: string, password: string, fullName: string, phone: string) => {
-    const { data, error } = await supabase.auth.signUp({ 
-      email, 
-      password,
-      options: {
-        data: {
-          full_name: fullName
+    console.log('Starting sign up for:', email);
+    try {
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: {
+            full_name: fullName
+          }
+        }
+      });
+
+      if (!error && data.user) {
+        console.log('User created, adding to users table:', data.user.id);
+        // Create a record in the users table
+        const { error: userError } = await supabase.from('users').insert({
+          id: data.user.id,
+          email,
+          full_name: fullName,
+          phone
+        });
+        
+        if (userError) {
+          console.error('Error creating user record:', userError);
         }
       }
-    });
 
-    if (!error && data.user) {
-      // Create a record in the users table
-      await supabase.from('users').insert({
-        id: data.user.id,
-        email,
-        full_name: fullName,
-        phone
-      });
+      return { data, error };
+    } catch (e) {
+      console.error('Exception during sign up:', e);
+      throw e;
     }
-
-    return { data, error };
   };
 
   const signOut = async () => {
-    return supabase.auth.signOut();
+    console.log('Signing out user:', user?.email);
+    try {
+      // Then trigger the sign out from Supabase
+      const result = await supabase.auth.signOut();
+      
+      // Clear local storage related to the current chat
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem('activeChat');
+      }
+      
+      console.log('Sign out completed');
+      return result;
+    } catch (e) {
+      console.error('Exception during sign out:', e);
+      throw e;
+    }
   };
 
   const debugUser = () => {

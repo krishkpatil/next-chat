@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import ChatList from './ChatList';
 import UserAvatar from './UserAvatar';
 import { supabase } from '../utils/supabase';
@@ -11,8 +11,8 @@ const Sidebar = ({ activeChat, onSelectChat }) => {
   const [loadError, setLoadError] = useState(null);
   const { user, signOut } = useSupabase();
   
-  // Use React's useEffect to fetch chats when component mounts
-  React.useEffect(() => {
+  // Use React's useEffect to fetch chats when component mounts or user changes
+  useEffect(() => {
     const fetchChats = async () => {
       if (!user) {
         setChats([]);
@@ -102,6 +102,23 @@ const Sidebar = ({ activeChat, onSelectChat }) => {
             });
         }
       )
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chats' },
+        (payload) => {
+          // Update chat when there's a change
+          setChats(prevChats => 
+            prevChats.map(chat => 
+              chat.id === payload.new.id 
+                ? {
+                    ...chat,
+                    name: payload.new.name,
+                    lastMessage: payload.new.last_message || '',
+                    timestamp: formatDate(payload.new.last_message_at || payload.new.created_at)
+                  } 
+                : chat
+            )
+          );
+        }
+      )
       .subscribe();
       
     return () => {
@@ -122,7 +139,7 @@ const Sidebar = ({ activeChat, onSelectChat }) => {
     return date.toLocaleDateString();
   };
   
-  // Create chat function that doesn't use hooks
+  // Create chat function
   const handleCreateChat = async () => {
     if (!user) {
       console.error("No user authenticated");
@@ -132,10 +149,13 @@ const Sidebar = ({ activeChat, onSelectChat }) => {
     try {
       console.log("Creating chat for user:", user.id);
       
+      // Create a new chat name with timestamp to make it unique
+      const chatName = `New Chat (${new Date().toLocaleTimeString()})`;
+      
       // Create a chat with the current user as participant
       const { data: chatId, error: createError } = await supabase
         .rpc('create_chat_with_participant', {
-          p_name: "New Chat",
+          p_name: chatName,
           p_is_group: true,
           p_user_id: user.id
         });
@@ -151,7 +171,7 @@ const Sidebar = ({ activeChat, onSelectChat }) => {
       // Instead of fetching the chat again, just create it with what we know
       const newChat = {
         id: chatId,
-        name: "New Chat",
+        name: chatName,
         lastMessage: '',
         timestamp: formatDate(new Date()),
         is_group: true
@@ -230,8 +250,13 @@ const Sidebar = ({ activeChat, onSelectChat }) => {
     <div className="w-full md:w-80 h-full flex flex-col border-r border-gray-200">
       <div className="p-3 bg-gray-50 flex justify-between items-center border-b border-gray-200">
         <div className="flex items-center">
-          <UserAvatar text="P" />
-          <h1 className="ml-2 text-lg font-semibold">Periskope</h1>
+          <UserAvatar text={user?.full_name?.[0] || user?.email?.[0] || 'P'} />
+          <div className="ml-2">
+            <h1 className="text-lg font-semibold text-black">Periskope</h1>
+            {user && (
+              <p className="text-xs text-black">{user.email}</p>
+            )}
+          </div>
         </div>
         <div className="flex space-x-2 text-gray-500">
           <button onClick={handleLogout} className="hover:text-gray-700">
@@ -257,19 +282,20 @@ const Sidebar = ({ activeChat, onSelectChat }) => {
           <input
             type="text"
             placeholder="Search"
-            className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-lg bg-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500"
+            className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-lg bg-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 text-black"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {/* Removed the + icon that was here */}
         </div>
       </div>
       
       <div className="p-2 border-b border-gray-200">
         <div className="flex space-x-1">
-          <button className="px-3 py-1 text-sm bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
+          <button className="px-3 py-1 text-sm bg-gray-200 text-black rounded-lg hover:bg-gray-300">
             Custom filter
           </button>
-          <button className="px-3 py-1 text-sm bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200">
+          <button className="px-3 py-1 text-sm bg-gray-100 text-black rounded-lg hover:bg-gray-200">
             Save
           </button>
         </div>
@@ -285,8 +311,8 @@ const Sidebar = ({ activeChat, onSelectChat }) => {
             {loadError}
           </div>
         ) : filteredChats.length === 0 ? (
-          <div className="text-gray-500 p-4 text-center">
-            No chats found
+          <div className="text-black p-4 text-center">
+            No chats found. Click the + button to create a new chat.
           </div>
         ) : (
           <ChatList 

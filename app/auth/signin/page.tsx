@@ -12,6 +12,7 @@ export default function SignIn() {
   const [phone, setPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
   
   const { user, signIn, signUp } = useSupabase();
   const router = useRouter();
@@ -19,7 +20,11 @@ export default function SignIn() {
   // Redirect if already authenticated
   useEffect(() => {
     if (user) {
+      console.log("User already authenticated, redirecting:", user.email);
+      setDebugInfo(`Already authenticated as: ${user.email}`);
       router.push('/');
+    } else {
+      console.log("No user authenticated, showing sign-in form");
     }
   }, [user, router]);
 
@@ -27,6 +32,7 @@ export default function SignIn() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    setDebugInfo(null);
 
     try {
       if (isSignUp) {
@@ -36,6 +42,9 @@ export default function SignIn() {
           return;
         }
 
+        console.log(`Attempting to sign up with email: ${email}`);
+        setDebugInfo(`Signing up as: ${email}`);
+        
         const { error } = await signUp(email, password, fullName, phone);
         if (error) {
           throw error;
@@ -44,16 +53,23 @@ export default function SignIn() {
         // On successful signup, show a message that they need to verify email
         alert('Please check your email to verify your account!');
       } else {
+        console.log(`Attempting to sign in with email: ${email}`);
+        setDebugInfo(`Signing in as: ${email}`);
+        
         const { error } = await signIn(email, password);
         if (error) {
           throw error;
         }
         
         // On successful login, redirect to home
+        console.log("Sign in successful, redirecting...");
+        setDebugInfo(`Successfully signed in as: ${email}`);
         router.push('/');
       }
     } catch (err: any) {
+      console.error("Authentication error:", err);
       setError(err.message || 'An error occurred');
+      setDebugInfo(`Error: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -80,6 +96,24 @@ export default function SignIn() {
               {error}
             </div>
           )}
+          
+          {debugInfo && (
+            <div className="bg-blue-100 text-blue-700 p-3 rounded mb-4 text-xs">
+              Debug: {debugInfo}
+            </div>
+          )}
+
+          {user && (
+            <div className="bg-yellow-100 text-yellow-800 p-3 rounded mb-4">
+              You are currently signed in as {user.email}. 
+              <button 
+                onClick={() => router.push('/')}
+                className="ml-2 underline"
+              >
+                Go to app
+              </button>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
@@ -91,7 +125,7 @@ export default function SignIn() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 text-black"
                 required
               />
             </div>
@@ -105,7 +139,7 @@ export default function SignIn() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 text-black"
                 required
               />
             </div>
@@ -121,7 +155,7 @@ export default function SignIn() {
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 text-black"
                     required
                   />
                 </div>
@@ -135,7 +169,7 @@ export default function SignIn() {
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 text-black"
                     required
                   />
                 </div>

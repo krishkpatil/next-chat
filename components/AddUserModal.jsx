@@ -1,12 +1,49 @@
-// components/AddUserModal.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
+import { useSupabase } from '../contexts/SupabaseContext';
 
 const AddUserModal = ({ isOpen, onClose, chatId }) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [currentParticipants, setCurrentParticipants] = useState([]);
+  const { user } = useSupabase();
+  
+  useEffect(() => {
+    // Reset state when modal opens or closes
+    if (isOpen) {
+      setEmail('');
+      setError(null);
+      setSuccess(false);
+      fetchCurrentParticipants();
+    }
+  }, [isOpen, chatId]);
+
+  // Fetch the current participants in the chat
+  const fetchCurrentParticipants = async () => {
+    if (!chatId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('chat_participants')
+        .select(`
+          user_id,
+          users:user_id (
+            id,
+            email,
+            full_name
+          )
+        `)
+        .eq('chat_id', chatId);
+        
+      if (error) throw error;
+      
+      setCurrentParticipants(data || []);
+    } catch (err) {
+      console.error('Error fetching participants:', err);
+    }
+  };
   
   if (!isOpen) return null;
   
@@ -17,6 +54,20 @@ const AddUserModal = ({ isOpen, onClose, chatId }) => {
     setSuccess(false);
     
     try {
+      // Prevent inviting yourself
+      if (user && user.email === email) {
+        throw new Error('You cannot add yourself to the chat');
+      }
+      
+      // Check if the email is already a participant
+      const isAlreadyParticipant = currentParticipants.some(
+        participant => participant.users?.email === email
+      );
+      
+      if (isAlreadyParticipant) {
+        throw new Error('User is already a member of this chat');
+      }
+      
       // Find user by email
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -25,19 +76,7 @@ const AddUserModal = ({ isOpen, onClose, chatId }) => {
         .single();
         
       if (userError) {
-        throw new Error('User not found with this email');
-      }
-      
-      // Check if user is already in the chat
-      const { data: existingMember, error: memberError } = await supabase
-        .from('chat_participants')
-        .select('*')
-        .eq('chat_id', chatId)
-        .eq('user_id', userData.id)
-        .single();
-        
-      if (existingMember) {
-        throw new Error('User is already a member of this chat');
+        throw new Error('User not found with this email. They must sign up first.');
       }
       
       // Add user to chat
@@ -53,6 +92,11 @@ const AddUserModal = ({ isOpen, onClose, chatId }) => {
       
       setSuccess(true);
       setEmail('');
+      
+      // Update the participants list
+      fetchCurrentParticipants();
+      
+      // Auto-close the modal after success
       setTimeout(() => {
         onClose();
       }, 2000);
@@ -66,7 +110,7 @@ const AddUserModal = ({ isOpen, onClose, chatId }) => {
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-96">
+      <div className="bg-white rounded-lg p-6 w-96 max-h-[90vh] overflow-y-auto">
         <h2 className="text-xl font-bold mb-4">Add User to Chat</h2>
         
         {error && (
@@ -95,6 +139,28 @@ const AddUserModal = ({ isOpen, onClose, chatId }) => {
               required
             />
           </div>
+          
+          {currentParticipants.length > 0 && (
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-gray-700 mb-2">Current Participants</h3>
+              <ul className="bg-gray-50 p-2 rounded max-h-32 overflow-y-auto">
+                {currentParticipants.map((participant) => (
+                  <li 
+                    key={participant.user_id} 
+                    className="text-sm py-1 border-b border-gray-100 last:border-0"
+                  >
+                    {participant.users?.full_name || 'Unknown'} 
+                    <span className="text-gray-500 ml-1">
+                      ({participant.users?.email})
+                    </span>
+                    {participant.user_id === user?.id && (
+                      <span className="text-green-500 ml-1">(You)</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           
           <div className="flex justify-end space-x-2">
             <button

@@ -149,10 +149,21 @@ const ChatView = ({ chat }) => {
     }));
   };
 
+  // Get sender display name - returns "Me" for current user
+  const getSenderDisplayName = (message) => {
+    if (!user) return 'Unknown';
+    
+    if (message.user_id === user.id) {
+      return 'Me';
+    }
+    
+    return message.user?.full_name || message.user?.email || message.user_id || 'Unknown';
+  };
+
   if (!chat?.id) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gray-100">
-        <div className="text-center text-gray-500">
+        <div className="text-center text-black">
           <p className="text-xl">Select a chat to start messaging</p>
         </div>
       </div>
@@ -162,7 +173,7 @@ const ChatView = ({ chat }) => {
   if (loadingChat || loadingMessages) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gray-100">
-        <div className="text-center text-gray-500">
+        <div className="text-center text-black">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
           <p>Loading chat...</p>
         </div>
@@ -190,7 +201,7 @@ const ChatView = ({ chat }) => {
         )}
 
         {messageGroups.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-500">
+          <div className="flex items-center justify-center h-full text-black">
             <p>No messages yet. Send a message to start the conversation.</p>
           </div>
         ) : (
@@ -198,7 +209,7 @@ const ChatView = ({ chat }) => {
             {messageGroups.map(group => (
               <div key={group.date}>
                 <div className="flex justify-center my-4">
-                  <div className="bg-gray-200 text-gray-600 text-xs px-3 py-1 rounded-full">
+                  <div className="bg-gray-200 text-black text-xs px-3 py-1 rounded-full">
                     {group.displayDate}
                   </div>
                 </div>
@@ -206,6 +217,7 @@ const ChatView = ({ chat }) => {
                 <div className="space-y-3">
                   {group.messages.map(message => {
                     const isFromCurrentUser = user?.id === message.user_id;
+                    const senderName = getSenderDisplayName(message);
                     
                     return (
                       <div 
@@ -223,19 +235,19 @@ const ChatView = ({ chat }) => {
                         )}
                         
                         <div className="max-w-xs md:max-w-md">
-                          {!isFromCurrentUser && message.user && (
+                          {!isFromCurrentUser && (
                             <div className="text-xs text-green-500 mb-1 pl-1">
-                              {message.user.full_name || message.user_id}
+                              {senderName}
                             </div>
                           )}
                           
                           <div 
                             className={`rounded-lg px-4 py-2 shadow-sm ${
-                              isFromCurrentUser ? 'bg-green-100 text-gray-800' : 'bg-white text-gray-800'
+                              isFromCurrentUser ? 'bg-green-100 text-black' : 'bg-white text-black'
                             }`}
                           >
                             <div className="whitespace-pre-wrap break-words">{message.content}</div>
-                            <div className="flex justify-end items-center text-xs text-gray-500 mt-1">
+                            <div className="flex justify-end items-center text-xs text-black mt-1">
                               {formatTimestamp(message.created_at)}
                               {isFromCurrentUser && (
                                 <span className="ml-1">
@@ -253,12 +265,9 @@ const ChatView = ({ chat }) => {
                             </div>
                           </div>
                           
-                          {isFromCurrentUser && user && (
-                            <div className="text-xs text-gray-500 mt-1 flex items-center justify-end">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                              </svg>
-                              {user.email}
+                          {isFromCurrentUser && (
+                            <div className="text-xs text-black mt-1 flex items-center justify-end">
+                              <span className="font-medium text-green-600">Me</span>
                             </div>
                           )}
                         </div>

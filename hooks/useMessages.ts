@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { useSupabase } from '../contexts/SupabaseContext';
 
-export const useMessages = (chatId) => {
+const useMessages = (chatId) => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -165,6 +165,7 @@ export const useMessages = (chatId) => {
 
     try {
       console.log("Sending message to chat:", chatId);
+      console.log("Current user:", user.id);
       
       // Create the message
       const { data, error: messageError } = await supabase

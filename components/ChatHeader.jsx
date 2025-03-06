@@ -24,7 +24,7 @@ const ChatHeader = ({ chat }) => {
     <div className="flex flex-col border-b border-gray-200 bg-gray-50">
       {/* Top header with controls */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200">
-        <div className="text-lg font-medium">{chat.name}</div>
+        <div className="text-lg font-medium text-black">{chat.name}</div>
         <div className="flex items-center space-x-4">
           <button className="text-gray-500 hover:text-gray-700">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -40,7 +40,7 @@ const ChatHeader = ({ chat }) => {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
             </svg>
-            <span className="ml-1 text-sm">
+            <span className="ml-1 text-sm text-black">
               {participantCount > 0 ? `${participantCount} / 6 users` : '1 / 6 users'}
             </span>
           </div>
@@ -74,8 +74,8 @@ const ChatHeader = ({ chat }) => {
         <div className="flex-1">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-medium">{chat.name}</h2>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <h2 className="font-medium text-black">{chat.name}</h2>
+              <p className="text-xs text-black mt-0.5">
                 {chat.is_group ? 'Group Chat' : 'Direct Message'} • {participantNames || 'No participants yet'}
               </p>
             </div>
@@ -83,7 +83,7 @@ const ChatHeader = ({ chat }) => {
             <div className="flex items-center space-x-2">
               <div className="flex -space-x-2 overflow-hidden">
                 {Array(Math.min(participantCount || 1, 5)).fill(0).map((_, idx) => (
-                  <div key={idx} className="inline-block h-8 w-8 rounded-full border-2 border-white bg-gray-200 text-center text-xs text-gray-700 flex items-center justify-center overflow-hidden">
+                  <div key={idx} className="inline-block h-8 w-8 rounded-full border-2 border-white bg-gray-200 text-center text-xs text-black flex items-center justify-center overflow-hidden">
                     {chat.participants && chat.participants[idx]?.users?.full_name?.[0] || 
                      ["U", "S", "E", "R", "S"][idx]}
                   </div>
