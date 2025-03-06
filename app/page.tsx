@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSupabase } from '../../../contexts/SupabaseContext';
+import { useSupabase } from '../contexts/SupabaseContext';
 
 export default function SignIn() {
   const [email, setEmail] = useState<string>('');
