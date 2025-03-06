@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { useSupabase } from '../contexts/SupabaseContext';
+import { Message } from '../types/index';
 
-const useMessages = (chatId) => {
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const useMessages = (chatId: string | null) => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useSupabase();
 
   // Fetch messages when chatId changes
@@ -43,7 +44,7 @@ const useMessages = (chatId) => {
         }
 
         console.log("Fetched messages:", data);
-        setMessages(data || []);
+        setMessages((data || []) as Message[]);
         
         // Mark messages as read
         if (data && data.length > 0) {
@@ -114,7 +115,7 @@ const useMessages = (chatId) => {
           }
           
           // Add the new message to our state
-          setMessages(prevMessages => [...prevMessages, newMessage]);
+          setMessages(prevMessages => [...prevMessages, newMessage as Message]);
           
           // If the message is from someone else, mark it as read
           if (user && payload.new.user_id !== user.id) {
@@ -160,7 +161,7 @@ const useMessages = (chatId) => {
     };
   }, [chatId, user]);
 
-  const sendMessage = async (content) => {
+  const sendMessage = async (content: string) => {
     if (!chatId || !user) return { error: 'User not authenticated or no chat selected' };
 
     try {
@@ -197,9 +198,9 @@ const useMessages = (chatId) => {
         .eq('id', chatId);
 
       return { message: data };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error sending message:', error);
-      return { error: error.message || 'Failed to send message' };
+      return { error: error instanceof Error ? error.message : 'Failed to send message' };
     }
   };
 
