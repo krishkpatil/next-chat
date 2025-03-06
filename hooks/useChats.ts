@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
-import { Chat, Tag } from '../types';
+import { Chat, Tag, User } from '../types/index';
 import { useSupabase } from '../contexts/SupabaseContext';
 
-export const useChats = (currentUser) => {
+export const useChats = (currentUser: User | null) => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
